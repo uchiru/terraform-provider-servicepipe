@@ -35,3 +35,4 @@ website/vendor
 *.winfile eol=crlf
 tags
 env.sh
+tags.lock
