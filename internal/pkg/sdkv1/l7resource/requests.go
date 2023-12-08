@@ -87,7 +87,7 @@ func Create(ctx context.Context, client *v1.Client, opts *CreateOpts) (*Data, *v
 }
 
 // Delete deletes a single domain by its id.
-func Delete(ctx context.Context, client *v1.Client, opts *DeleteOpts) (*Data, *v1.ResponseResult, error) {
+func Delete(ctx context.Context, client *v1.Client, opts *DeleteOpts) (*DataDelete, *v1.ResponseResult, error) {
 	url := strings.Join([]string{client.Endpoint, l7ResourcePath}, "/")
 	requestBody, err := json.Marshal(opts)
 	if err != nil {
@@ -103,13 +103,13 @@ func Delete(ctx context.Context, client *v1.Client, opts *DeleteOpts) (*Data, *v
 	}
 
 	// Extract domain from the response body.
-	domain := &Data{}
-	err = responseResult.ExtractResult(domain)
+	result := &DataDelete{}
+	err = responseResult.ExtractResult(result)
 	if err != nil {
 		return nil, responseResult, err
 	}
 
-	return domain, responseResult, nil
+	return result, responseResult, nil
 }
 
 func convertToSliceOfPointers(items []Item) []*Item {

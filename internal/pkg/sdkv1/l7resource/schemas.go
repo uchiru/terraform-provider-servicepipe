@@ -8,18 +8,6 @@ type Result struct {
 	Result Item `json:"result"`
 }
 
-type DataItems struct {
-	DataItems ResultItems `json:"data"`
-}
-
-type ResultItems struct {
-	ResultItems Items `json:"result"`
-}
-
-type Items struct {
-	Items []Item `json:"items"`
-}
-
 // Item represents an unmarshalled domain body from API response.
 type Item struct {
 	// PartnerClientAccountId is the identifier of partner client.
@@ -59,4 +47,24 @@ type Item struct {
 	Cdn           int    `json:"cdn"`
 	CdnHost       string `json:"cdnHost"`
 	CdnProxyHost  string `json:"cdnProxyHost"`
+}
+
+type DataItems struct {
+	DataItems ResultItems `json:"data"`
+}
+
+type ResultItems struct {
+	ResultItems Items `json:"result"`
+}
+
+type Items struct {
+	Items []Item `json:"items"`
+}
+
+type DataDelete struct {
+	Data ResultDelete `json:"data"`
+}
+
+type ResultDelete struct {
+	ResultItems string `json:"result"`
 }

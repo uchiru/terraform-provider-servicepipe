@@ -12,5 +12,5 @@ type CreateOpts struct {
 // CreateOpts represents requests options to create a domain.
 type DeleteOpts struct {
 	// L7ResourceID is the identifier of the resource.
-	L7ResourceID string `jsoe:"l7ResourceId,omitempty"`
+	L7ResourceID int `json:"l7ResourceId,omitempty"`
 }
