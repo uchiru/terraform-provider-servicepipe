@@ -66,5 +66,5 @@ type DataDelete struct {
 }
 
 type ResultDelete struct {
-	ResultItems string `json:"result"`
+	Result string `json:"result"`
 }

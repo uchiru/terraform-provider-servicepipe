@@ -112,6 +112,32 @@ func Delete(ctx context.Context, client *v1.Client, opts *DeleteOpts) (*DataDele
 	return result, responseResult, nil
 }
 
+// Update deletes a single domain by its id.
+func Update(ctx context.Context, client *v1.Client, item *Item) (*Data, *v1.ResponseResult, error) {
+	url := strings.Join([]string{client.Endpoint, l7ResourcePath}, "/")
+	requestBody, err := json.Marshal(item)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	responseResult, err := client.DoRequest(ctx, http.MethodPut, url, bytes.NewReader(requestBody))
+	if err != nil {
+		return nil, nil, err
+	}
+	if responseResult.Err != nil {
+		return nil, responseResult, responseResult.Err
+	}
+
+	// Extract domain from the response body.
+	result := &Data{}
+	err = responseResult.ExtractResult(result)
+	if err != nil {
+		return nil, responseResult, err
+	}
+
+	return result, responseResult, nil
+}
+
 func convertToSliceOfPointers(items []Item) []*Item {
 	pointers := make([]*Item, len(items))
 	for i := range items {
