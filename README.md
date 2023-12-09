@@ -62,3 +62,9 @@ In order to run the full suite of Acceptance tests, run `make testacc`.
 ```shell
 make testacc
 ```
+
+Refs
+- https://github.com/cloudflare/terraform-provider-cloudflare
+- https://github.com/hashicorp/terraform-provider-hashicups
+- https://developer.hashicorp.com/terraform/plugin/framework/resources/create
+- https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework/providers-plugin-framework-provider
