@@ -13,7 +13,7 @@ type Item struct {
 	L7ResourceID int    `json:"l7ResourceId"`
 	ID           int    `json:"id"`
 	Weight       int    `json:"weight"`
-	Mode         string `json:"Mode"`
+	Mode         string `json:"mode"`
 	IP           string `json:"ip"`
 	CreatedAt    int    `json:"createdAt"`
 	ModifiedAt   int    `json:"modifiedAt"`

@@ -8,8 +8,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-
 	v1 "terraform-provider-servicepipe/internal/pkg/sdkv1"
+
+	"github.com/google/go-querystring/query"
 )
 
 const l7OriginPath = "l7/origin"
@@ -36,8 +37,16 @@ func GetByID(ctx context.Context, client *v1.Client, l7ResourceID int, ID int) (
 }
 
 // List gets a list of all origins.
-func List(ctx context.Context, client *v1.Client) ([]*Item, *v1.ResponseResult, error) {
+func List(ctx context.Context, client *v1.Client, opts *ListOpts) ([]*Item, *v1.ResponseResult, error) {
 	url := strings.Join([]string{client.Endpoint, l7OriginPath}, "/")
+
+	queryParams, err := query.Values(opts)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	url = strings.Join([]string{url, queryParams.Encode()}, "?")
+
 	responseResult, err := client.DoRequest(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, nil, err
