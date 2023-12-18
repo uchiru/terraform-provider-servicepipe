@@ -93,12 +93,6 @@ func (p *servicepipeProvider) Configure(ctx context.Context, req provider.Config
 		return
 	}
 
-	// Default values to environment variables, but override
-	// with Terraform configuration value if set.
-
-	// endpoint := os.Getenv("SERVICEPIPE_ENDPOINT")
-	// token := os.Getenv("SERVICEPIPE_TOKEN")
-
 	if config.Endpoint.IsNull() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("endpoint"),
@@ -118,8 +112,6 @@ func (p *servicepipeProvider) Configure(ctx context.Context, req provider.Config
 				"Set the token value in the configuration or use the servicepipe_PASSWORD environment variable. "+
 				"If either is already set, ensure the value is not empty.",
 		)
-
-		// token = config.Token.ValueString()
 	}
 
 	// If any of the expected configurations are missing, return
