@@ -155,7 +155,8 @@ func (client *Client) DoRequest(ctx context.Context, method, path string, body i
 	}
 
 	responseResult := &ResponseResult{
-		Response: response,
+		Response:    response,
+		RequestBody: body,
 	}
 
 	// Check status code and populate custom error body with extended error message if it's possible.
@@ -169,6 +170,21 @@ func (client *Client) DoRequest(ctx context.Context, method, path string, body i
 	return responseResult, nil
 }
 
+func (client *Client) Echo(ctx context.Context) (bool, *ResponseResult, error) {
+
+	l7ResourcePath := "l7/resource"
+	url := strings.Join([]string{client.Endpoint, l7ResourcePath}, "/")
+	responseResult, err := client.DoRequest(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return false, nil, err
+	}
+	if responseResult.Err != nil {
+		return false, responseResult, responseResult.Err
+	}
+
+	return true, responseResult, responseResult.Err
+}
+
 // ResponseResult represents a result of an HTTP request.
 // It embeds standard http.Response and adds custom API error representations.
 type ResponseResult struct {
@@ -180,6 +196,8 @@ type ResponseResult struct {
 
 	// Err contains an error that can be provided to a caller.
 	Err error
+
+	RequestBody io.Reader
 }
 
 // ErrNotFound represents 404 status code error of an HTTP response.
@@ -239,8 +257,7 @@ func (result *ResponseResult) extractErr() error {
 		return nil
 	}
 
-	result.Err = fmt.Errorf("sp-go: got the %d status code from the server: %s",
-		result.StatusCode, string(body))
+	result.Err = fmt.Errorf("sp-go: got the %d status code from the server: %s", result.StatusCode, string(body))
 
 	return nil
 }

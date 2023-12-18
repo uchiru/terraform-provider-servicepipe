@@ -14,7 +14,7 @@ type Item struct {
 	PartnerClientAccountId int `json:"partnerClientAccountId"`
 
 	// L7ResourceID is the identifier of the resource.
-	L7ResourceID        int    `json:"l7ResourceId"`
+	L7ResourceID        int64  `json:"l7ResourceId"`
 	L7ResourceName      string `json:"l7ResourceName"`
 	L7ResourceIsActive  int    `json:"l7ResourceIsActive"`
 	L7ProtectionDisable int    `json:"l7ProtectionDisable"`
@@ -47,6 +47,7 @@ type Item struct {
 	Cdn           int    `json:"cdn"`
 	CdnHost       string `json:"cdnHost"`
 	CdnProxyHost  string `json:"cdnProxyHost"`
+	OriginData    string `json:"OriginData, omitempty"`
 }
 
 type DataItems struct {
