@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"strings"
@@ -212,7 +211,7 @@ type ErrGeneric struct {
 
 // ExtractResult allows to provide an object into which ResponseResult body will be extracted.
 func (result *ResponseResult) ExtractResult(to interface{}) error {
-	body, err := ioutil.ReadAll(result.Body)
+	body, err := io.ReadAll(result.Body)
 	if err != nil {
 		return err
 	}
@@ -223,7 +222,7 @@ func (result *ResponseResult) ExtractResult(to interface{}) error {
 
 // ExtractRaw extracts ResponseResult body into the slice of bytes without unmarshalling.
 func (result *ResponseResult) ExtractRaw() ([]byte, error) {
-	bytes, err := ioutil.ReadAll(result.Body)
+	bytes, err := io.ReadAll(result.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +233,7 @@ func (result *ResponseResult) ExtractRaw() ([]byte, error) {
 
 // extractErr populates an error message and error structure in the ResponseResult body.
 func (result *ResponseResult) extractErr() error {
-	body, err := ioutil.ReadAll(result.Body)
+	body, err := io.ReadAll(result.Body)
 	if err != nil {
 		return err
 	}
@@ -254,7 +253,7 @@ func (result *ResponseResult) extractErr() error {
 	if err != nil {
 		result.Err = fmt.Errorf("sp-go: got invalid response from the server, status code %d",
 			result.StatusCode)
-		return nil
+		return err
 	}
 
 	result.Err = fmt.Errorf("sp-go: got the %d status code from the server: %s", result.StatusCode, string(body))

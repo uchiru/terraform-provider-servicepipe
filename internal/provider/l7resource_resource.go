@@ -620,7 +620,7 @@ func expandL7ResourceModel(model *l7resourceResourceModel) *l7resource.Item {
 
 func flatternL7ResourceModel(item l7resource.Item) *l7resourceResourceModel {
 	return &l7resourceResourceModel{
-		L7ResourceID:          types.Int64Value(int64(item.L7ResourceID)),
+		L7ResourceID:          types.Int64Value(item.L7ResourceID),
 		L7ResourceName:        types.StringValue(item.L7ResourceName),
 		L7ResourceIsActive:    types.Int64Value(int64(item.L7ResourceIsActive)),
 		L7ProtectionDisable:   types.Int64Value(int64(item.L7ProtectionDisable)),
@@ -662,8 +662,8 @@ func flatternL7OriginModel(item *l7origin.Item) *l7originResourceModel {
 		IP:           types.StringValue(item.IP),
 		Weight:       types.Int64Value(item.Weight),
 		Mode:         types.StringValue(item.Mode),
-		CreatedAt:    types.Int64Value(int64(item.CreatedAt)),
-		ModifiedAt:   types.Int64Value(int64(item.ModifiedAt)),
+		CreatedAt:    types.Int64Value(item.CreatedAt),
+		ModifiedAt:   types.Int64Value(item.ModifiedAt),
 	}
 }
 

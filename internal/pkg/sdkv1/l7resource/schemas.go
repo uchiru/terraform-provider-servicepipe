@@ -10,8 +10,8 @@ type Result struct {
 
 // Item represents an unmarshalled domain body from API response.
 type Item struct {
-	// PartnerClientAccountId is the identifier of partner client.
-	PartnerClientAccountId int `json:"partnerClientAccountId"`
+	// PartnerClientAccountID is the identifier of partner client.
+	PartnerClientAccountID int `json:"partnerClientAccountId"`
 
 	// L7ResourceID is the identifier of the resource.
 	L7ResourceID        int64  `json:"l7ResourceId"`
@@ -32,13 +32,13 @@ type Item struct {
 	// CreateDate represents Unix timestamp when domain has been created.
 	СreatedAt             int    `json:"сreatedAt"`
 	Forcessl              int    `json:"forcessl"`
-	ServiceHttp2          int    `json:"serviceHttp2"`
+	ServiceHTTP2          int    `json:"serviceHttp2"`
 	GeoipMode             int    `json:"geoipMode"`
 	GeoipList             string `json:"geoipList"`
 	GlobalWhitelistActive int    `json:"globalWhitelistActive"`
 
-	Http2https int `json:"http2https"`
-	Https2http int `json:"https2http"`
+	HTTP2https int `json:"http2https"`
+	HTTPS2http int `json:"https2http"`
 
 	ProtectedIp   string `json:"protectedIp"`
 	ModifiedAt    int    `json:"modifiedAt"`
@@ -47,7 +47,7 @@ type Item struct {
 	Cdn           int    `json:"cdn"`
 	CdnHost       string `json:"cdnHost"`
 	CdnProxyHost  string `json:"cdnProxyHost"`
-	OriginData    string `json:"OriginData, omitempty"`
+	OriginData    string `json:"originData,omitempty"`
 }
 
 type DataItems struct {
