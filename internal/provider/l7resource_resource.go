@@ -46,12 +46,12 @@ type l7resourceResourceModel struct {
 	CustomSslKey          types.String `tfsdk:"custom_ssl_key"`
 	CustomSslCrt          types.String `tfsdk:"custom_ssl_crt"`
 	Forcessl              types.Int64  `tfsdk:"force_ssl"`
-	ServiceHttp2          types.Int64  `tfsdk:"service_http2"`
+	ServiceHTTP2          types.Int64  `tfsdk:"service_http2"`
 	GeoipMode             types.Int64  `tfsdk:"geoip_mode"`
 	GeoipList             types.String `tfsdk:"geoip_list"`
 	GlobalWhitelistActive types.Int64  `tfsdk:"global_whitelist_active"`
-	Http2https            types.Int64  `tfsdk:"http_2_https"`
-	Https2http            types.Int64  `tfsdk:"https_2_http"`
+	HTTP2https            types.Int64  `tfsdk:"http_2_https"`
+	HTTPS2http            types.Int64  `tfsdk:"https_2_http"`
 	ProtectedIp           types.String `tfsdk:"protected_ip"`
 	Wwwredir              types.Int64  `tfsdk:"www_redir"`
 	Cdn                   types.Int64  `tfsdk:"cdn"`
@@ -604,12 +604,12 @@ func expandL7ResourceModel(model *l7resourceResourceModel) *l7resource.Item {
 		CustomSslKey:          model.CustomSslKey.ValueString(),
 		CustomSslCrt:          model.CustomSslCrt.ValueString(),
 		Forcessl:              int(model.Forcessl.ValueInt64()),
-		ServiceHttp2:          int(model.ServiceHttp2.ValueInt64()),
+		ServiceHTTP2:          int(model.ServiceHTTP2.ValueInt64()),
 		GeoipMode:             int(model.GeoipMode.ValueInt64()),
 		GeoipList:             model.GeoipList.ValueString(),
 		GlobalWhitelistActive: int(model.GlobalWhitelistActive.ValueInt64()),
-		Http2https:            int(model.Http2https.ValueInt64()),
-		Https2http:            int(model.Https2http.ValueInt64()),
+		HTTP2https:            int(model.HTTP2https.ValueInt64()),
+		HTTPS2http:            int(model.HTTPS2http.ValueInt64()),
 		ProtectedIp:           model.ProtectedIp.ValueString(),
 		Wwwredir:              int(model.Wwwredir.ValueInt64()),
 		Cdn:                   int(model.Cdn.ValueInt64()),
@@ -629,12 +629,12 @@ func flatternL7ResourceModel(item l7resource.Item) *l7resourceResourceModel {
 		CustomSslKey:          types.StringValue(item.CustomSslKey),
 		CustomSslCrt:          types.StringValue(item.CustomSslCrt),
 		Forcessl:              types.Int64Value(int64(item.Forcessl)),
-		ServiceHttp2:          types.Int64Value(int64(item.ServiceHttp2)),
+		ServiceHTTP2:          types.Int64Value(int64(item.ServiceHTTP2)),
 		GeoipMode:             types.Int64Value(int64(item.GeoipMode)),
 		GeoipList:             types.StringValue(item.GeoipList),
 		GlobalWhitelistActive: types.Int64Value(int64(item.GlobalWhitelistActive)),
-		Http2https:            types.Int64Value(int64(item.Http2https)),
-		Https2http:            types.Int64Value(int64(item.Https2http)),
+		HTTP2https:            types.Int64Value(int64(item.HTTP2https)),
+		HTTPS2http:            types.Int64Value(int64(item.HTTPS2http)),
 		ProtectedIp:           types.StringValue(item.ProtectedIp),
 		Wwwredir:              types.Int64Value(int64(item.Wwwredir)),
 		Cdn:                   types.Int64Value(int64(item.Cdn)),
@@ -742,8 +742,8 @@ func CheckPlanVsState(plan *l7resourceResourceModel, state *l7resourceResourceMo
 		update = true
 	}
 
-	if !plan.ServiceHttp2.Equal(state.ServiceHttp2) {
-		item.ServiceHttp2 = int(plan.ServiceHttp2.ValueInt64())
+	if !plan.ServiceHTTP2.Equal(state.ServiceHTTP2) {
+		item.ServiceHTTP2 = int(plan.ServiceHTTP2.ValueInt64())
 		update = true
 	}
 
@@ -762,13 +762,13 @@ func CheckPlanVsState(plan *l7resourceResourceModel, state *l7resourceResourceMo
 		update = true
 	}
 
-	if !plan.Http2https.Equal(state.Http2https) {
-		item.Http2https = int(plan.Http2https.ValueInt64())
+	if !plan.HTTP2https.Equal(state.HTTP2https) {
+		item.HTTP2https = int(plan.HTTP2https.ValueInt64())
 		update = true
 	}
 
-	if !plan.Https2http.Equal(state.Https2http) {
-		item.Https2http = int(plan.Https2http.ValueInt64())
+	if !plan.HTTPS2http.Equal(state.HTTPS2http) {
+		item.HTTPS2http = int(plan.HTTPS2http.ValueInt64())
 		update = true
 	}
 
@@ -842,8 +842,8 @@ func CheckingL7resourcePlanAttrIsNull(plan l7resourceResourceModel, item *l7reso
 		update = true
 	}
 
-	if !plan.ServiceHttp2.IsNull() || !plan.ServiceHttp2.IsUnknown() {
-		item.ServiceHttp2 = int(plan.ServiceHttp2.ValueInt64())
+	if !plan.ServiceHTTP2.IsNull() || !plan.ServiceHTTP2.IsUnknown() {
+		item.ServiceHTTP2 = int(plan.ServiceHTTP2.ValueInt64())
 		update = true
 	}
 
@@ -862,13 +862,13 @@ func CheckingL7resourcePlanAttrIsNull(plan l7resourceResourceModel, item *l7reso
 		update = true
 	}
 
-	if !plan.Http2https.IsNull() || !plan.Http2https.IsUnknown() {
-		item.Http2https = int(plan.Http2https.ValueInt64())
+	if !plan.HTTP2https.IsNull() || !plan.HTTP2https.IsUnknown() {
+		item.HTTP2https = int(plan.HTTP2https.ValueInt64())
 		update = true
 	}
 
-	if !plan.Https2http.IsNull() || !plan.Https2http.IsUnknown() {
-		item.Https2http = int(plan.Https2http.ValueInt64())
+	if !plan.HTTPS2http.IsNull() || !plan.HTTPS2http.IsUnknown() {
+		item.HTTPS2http = int(plan.HTTPS2http.ValueInt64())
 		update = true
 	}
 
