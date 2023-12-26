@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	v1 "terraform-provider-servicepipe/internal/pkg/sdkv1"
+	l7origin "terraform-provider-servicepipe/internal/pkg/sdkv1/l7origin"
 	l7resource "terraform-provider-servicepipe/internal/pkg/sdkv1/l7resource"
 )
 
@@ -56,10 +58,19 @@ type l7resourceResourceModel struct {
 	CdnHost               types.String `tfsdk:"cdn_host"`
 	CdnProxyHost          types.String `tfsdk:"cdn_proxy_host"`
 
-	// TODO надо убрать этот кусок и реализовать через ресура l7origin
-	OriginData types.String `tfsdk:"origin_data"`
+	Origins []*l7originResourceModel `tfsdk:"origins"`
 
 	LastUpdated types.String `tfsdk:"last_updated"`
+}
+
+type l7originResourceModel struct {
+	L7ResourceID types.Int64  `tfsdk:"l7_resource_id"`
+	ID           types.Int64  `tfsdk:"id"`
+	Weight       types.Int64  `tfsdk:"weight"`
+	Mode         types.String `tfsdk:"mode"`
+	IP           types.String `tfsdk:"ip"`
+	CreatedAt    types.Int64  `tfsdk:"created_at"`
+	ModifiedAt   types.Int64  `tfsdk:"modified_at"`
 }
 
 // Metadata returns the resource type name.
@@ -165,11 +176,42 @@ func (r *l7resourceResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				Computed: true,
 				Default:  stringdefault.StaticString(""),
 			},
-			"origin_data": schema.StringAttribute{
-				Required: true,
-			},
 			"last_updated": schema.StringAttribute{
 				Computed: true,
+			},
+			"origins": schema.ListNestedAttribute{
+				Required: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"l7_resource_id": schema.Int64Attribute{
+							Computed: true,
+						},
+						"id": schema.Int64Attribute{
+							Computed: true,
+						},
+						"weight": schema.Int64Attribute{
+							Optional: true,
+							Computed: true,
+							Default:  int64default.StaticInt64(50),
+						},
+						"mode": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							Default:  stringdefault.StaticString(""),
+						},
+						"ip": schema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							Default:  stringdefault.StaticString(""),
+						},
+						"created_at": schema.Int64Attribute{
+							Computed: true,
+						},
+						"modified_at": schema.Int64Attribute{
+							Computed: true,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -204,13 +246,14 @@ func (r *l7resourceResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
+	planOrigins := plan.Origins
+
 	// Generate API request body from plan
 	createOpts := &l7resource.CreateOpts{
 		L7ResourceName: plan.L7ResourceName.ValueString(),
-		OriginData:     plan.OriginData.ValueString(),
+		OriginData:     plan.Origins[0].IP.ValueString(),
 	}
 
-	orig := plan.OriginData
 	response, _, err := l7resource.Create(ctx, r.client, createOpts)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -220,104 +263,10 @@ func (r *l7resourceResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	update := false
-
-	if !plan.L7ResourceName.IsNull() || !plan.L7ResourceName.IsUnknown() {
-		response.Data.Result.L7ResourceName = plan.L7ResourceName.ValueString()
-		update = true
-	}
-
-	if !plan.L7ResourceIsActive.IsNull() || !plan.L7ResourceIsActive.IsUnknown() {
-		response.Data.Result.L7ResourceIsActive = int(plan.L7ResourceIsActive.ValueInt64())
-		update = true
-	}
-
-	if !plan.L7ProtectionDisable.IsNull() || !plan.L7ProtectionDisable.IsUnknown() {
-		response.Data.Result.L7ProtectionDisable = int(plan.L7ProtectionDisable.ValueInt64())
-		update = true
-	}
-
-	if !plan.UseCustomSsl.IsNull() || !plan.UseCustomSsl.IsUnknown() {
-		response.Data.Result.UseCustomSsl = int(plan.UseCustomSsl.ValueInt64())
-		update = true
-	}
-
-	if !plan.UseLetsencryptSsl.IsNull() || !plan.UseLetsencryptSsl.IsUnknown() {
-		response.Data.Result.UseLetsencryptSsl = int(plan.UseLetsencryptSsl.ValueInt64())
-		update = true
-	}
-
-	if !plan.CustomSslKey.IsNull() || !plan.CustomSslKey.IsUnknown() {
-		response.Data.Result.CustomSslKey = plan.CustomSslKey.ValueString()
-		update = true
-	}
-
-	if !plan.CustomSslCrt.IsNull() || !plan.CustomSslCrt.IsUnknown() {
-		response.Data.Result.CustomSslCrt = plan.CustomSslCrt.ValueString()
-		update = true
-	}
-	if !plan.Forcessl.IsNull() || !plan.Forcessl.IsUnknown() {
-		response.Data.Result.Forcessl = int(plan.Forcessl.ValueInt64())
-		update = true
-	}
-
-	if !plan.ServiceHttp2.IsNull() || !plan.ServiceHttp2.IsUnknown() {
-		response.Data.Result.ServiceHttp2 = int(plan.ServiceHttp2.ValueInt64())
-		update = true
-	}
-
-	if !plan.GeoipMode.IsNull() || !plan.GeoipMode.IsUnknown() {
-		response.Data.Result.GeoipMode = int(plan.GeoipMode.ValueInt64())
-		update = true
-	}
-
-	if !plan.GeoipList.IsNull() || !plan.GeoipList.IsUnknown() {
-		response.Data.Result.GeoipList = plan.GeoipList.ValueString()
-		update = true
-	}
-
-	if !plan.GlobalWhitelistActive.IsNull() || !plan.GlobalWhitelistActive.IsUnknown() {
-		response.Data.Result.GlobalWhitelistActive = int(plan.GlobalWhitelistActive.ValueInt64())
-		update = true
-	}
-
-	if !plan.Http2https.IsNull() || !plan.Http2https.IsUnknown() {
-		response.Data.Result.Http2https = int(plan.Http2https.ValueInt64())
-		update = true
-	}
-
-	if !plan.Https2http.IsNull() || !plan.Https2http.IsUnknown() {
-		response.Data.Result.Https2http = int(plan.Https2http.ValueInt64())
-		update = true
-	}
-
-	if !plan.ProtectedIp.IsNull() || !plan.ProtectedIp.IsUnknown() {
-		response.Data.Result.ProtectedIp = plan.ProtectedIp.ValueString()
-		update = true
-	}
-
-	if !plan.Wwwredir.IsNull() || !plan.Wwwredir.IsUnknown() {
-		response.Data.Result.Wwwredir = int(plan.Wwwredir.ValueInt64())
-		update = true
-	}
-
-	if !plan.Cdn.IsNull() || !plan.Cdn.IsUnknown() {
-		response.Data.Result.Cdn = int(plan.Cdn.ValueInt64())
-		update = true
-	}
-
-	if !plan.CdnHost.IsNull() || !plan.CdnHost.IsUnknown() {
-		response.Data.Result.CdnHost = plan.CdnHost.ValueString()
-		update = true
-	}
-
-	if !plan.CdnProxyHost.IsNull() || !plan.CdnProxyHost.IsUnknown() {
-		response.Data.Result.CdnProxyHost = plan.CdnProxyHost.ValueString()
-		update = true
-	}
+	updateOpts, update := CheckingL7resourcePlanAttrIsNull(*plan, &response.Data.Result)
 
 	if update {
-		respUpd, _, err := l7resource.Update(ctx, r.client, &response.Data.Result)
+		respUpd, _, err := l7resource.Update(ctx, r.client, updateOpts)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error Updating Servicepipe l7 resource",
@@ -326,10 +275,80 @@ func (r *l7resourceResource) Create(ctx context.Context, req resource.CreateRequ
 			return
 		}
 		// Convert from the API data model to the Terraform data model
-		plan = l7ItemToResourceModel(respUpd.Data.Result)
+		plan = flatternL7ResourceModel(respUpd.Data.Result)
 	}
 
-	plan.OriginData = orig
+	var origins []*l7originResourceModel
+	for _, v := range planOrigins {
+		origin := expandL7OriginModel(v)
+
+		item, ok := CheckExistingOriginByIP(ctx, r.client, origin.IP, response.Data.Result.L7ResourceID)
+		if !ok {
+			// Generate API request body from plan
+			createOriginOpts := &l7origin.CreateOpts{
+				L7ResourceID: response.Data.Result.L7ResourceID,
+				IP:           origin.IP,
+				Weight:       origin.Weight,
+				Mode:         origin.Mode,
+			}
+
+			result, _, err := l7origin.Create(ctx, r.client, createOriginOpts)
+			if err != nil {
+				msg := fmt.Sprintf("%+v", result)
+				resp.Diagnostics.AddError(
+					"Error creating l7origin: "+msg,
+					"Could not create l7origin, unexpected error: "+err.Error(),
+				)
+				return
+			}
+			item = &result.Data.Result
+		}
+
+		originOpts := expandL7OriginModel(v)
+		originOpts.L7ResourceID = response.Data.Result.L7ResourceID
+		originOpts.ID = item.ID
+		updateOrig := false
+
+		if !v.IP.IsNull() || !v.IP.IsUnknown() {
+			originOpts.IP = v.IP.ValueString()
+			updateOrig = true
+		}
+
+		if !v.Mode.IsNull() || !v.Mode.IsUnknown() {
+			originOpts.Mode = v.Mode.ValueString()
+			updateOrig = true
+		}
+
+		if !v.Weight.IsNull() || !v.Weight.IsUnknown() {
+			originOpts.Weight = v.Weight.ValueInt64()
+			updateOrig = true
+		}
+
+		if updateOrig {
+			respUpd, _, err := l7origin.Update(ctx, r.client, originOpts)
+			if err != nil {
+				msg := fmt.Sprintf("%+v _ %+v", respUpd, originOpts)
+				resp.Diagnostics.AddError(
+					"Error Updating Servicepipe l7 origin: "+msg,
+					"Could not update l7 origin, unexpected error: "+err.Error(),
+				)
+				return
+			}
+		}
+
+		originResponse, _, err := l7origin.GetByID(ctx, r.client, int(response.Data.Result.L7ResourceID), int(item.ID))
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error Reading Servicepipe l7 origin",
+				"Could not read Servicepipe l7 origin ID "+strconv.Itoa(int(item.ID))+": "+err.Error(),
+			)
+			return
+		}
+
+		originResponse.Data.Result.L7ResourceID = response.Data.Result.L7ResourceID
+		origins = append(origins, flatternL7OriginModel(&originResponse.Data.Result))
+	}
+	plan.Origins = origins
 	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
 
 	// Save data into Terraform state
@@ -350,7 +369,7 @@ func (r *l7resourceResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 
 	// Get refreshed order value from HashiCups
-	response, _, err := l7resource.GetByID(ctx, r.client, int(state.L7ResourceID.ValueInt64()))
+	resourceResponse, _, err := l7resource.GetByID(ctx, r.client, int(state.L7ResourceID.ValueInt64()))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading HashiCups l7 resource",
@@ -359,9 +378,23 @@ func (r *l7resourceResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
-	orig := state.OriginData
-	state = l7ItemToResourceModel(response.Data.Result)
-	state.OriginData = orig
+	var origins []*l7originResourceModel
+	for _, v := range state.Origins {
+		originResponse, _, err := l7origin.GetByID(ctx, r.client, int(state.L7ResourceID.ValueInt64()), int(v.ID.ValueInt64()))
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error Reading Servicepipe l7 origin",
+				"Could not read Servicepipe l7 origin ID "+strconv.Itoa(int(v.ID.ValueInt64()))+": "+err.Error(),
+			)
+			return
+		}
+
+		originResponse.Data.Result.L7ResourceID = state.L7ResourceID.ValueInt64()
+		origins = append(origins, flatternL7OriginModel(&originResponse.Data.Result))
+	}
+
+	state = flatternL7ResourceModel(resourceResponse.Data.Result)
+	state.Origins = origins
 
 	// Set refreshed state
 	diags = resp.State.Set(ctx, &state)
@@ -382,10 +415,10 @@ func (r *l7resourceResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	// Update existing order
-	opts := ResourceModelTol7Item(plan)
-	opts.L7ResourceID = state.L7ResourceID.ValueInt64()
+	item := expandL7ResourceModel(plan)
+	item.L7ResourceID = state.L7ResourceID.ValueInt64()
 
-	jsonOpts, err := json.Marshal(opts)
+	jsonOpts, err := json.Marshal(item)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Marshal req Servicepipe l7 resource",
@@ -394,101 +427,7 @@ func (r *l7resourceResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
-	update := false
-
-	if !plan.L7ResourceName.Equal(state.L7ResourceName) {
-		opts.L7ResourceName = plan.L7ResourceName.ValueString()
-		update = true
-	}
-
-	if !plan.L7ResourceIsActive.Equal(state.L7ResourceIsActive) {
-		opts.L7ResourceIsActive = int(plan.L7ResourceIsActive.ValueInt64())
-		update = true
-	}
-
-	if !plan.L7ProtectionDisable.Equal(state.L7ProtectionDisable) {
-		opts.L7ProtectionDisable = int(plan.L7ProtectionDisable.ValueInt64())
-		update = true
-	}
-
-	if !plan.UseCustomSsl.Equal(state.UseCustomSsl) {
-		opts.UseCustomSsl = int(plan.UseCustomSsl.ValueInt64())
-		update = true
-	}
-
-	if !plan.UseLetsencryptSsl.Equal(state.UseLetsencryptSsl) {
-		opts.UseLetsencryptSsl = int(plan.UseLetsencryptSsl.ValueInt64())
-		update = true
-	}
-
-	if !plan.CustomSslKey.Equal(state.CustomSslKey) {
-		opts.CustomSslKey = plan.CustomSslKey.ValueString()
-		update = true
-	}
-
-	if !plan.CustomSslCrt.Equal(state.CustomSslCrt) {
-		opts.CustomSslCrt = plan.CustomSslCrt.ValueString()
-		update = true
-	}
-	if !plan.Forcessl.Equal(state.Forcessl) {
-		opts.Forcessl = int(plan.Forcessl.ValueInt64())
-		update = true
-	}
-
-	if !plan.ServiceHttp2.Equal(state.ServiceHttp2) {
-		opts.ServiceHttp2 = int(plan.ServiceHttp2.ValueInt64())
-		update = true
-	}
-
-	if !plan.GeoipMode.Equal(state.GeoipMode) {
-		opts.GeoipMode = int(plan.GeoipMode.ValueInt64())
-		update = true
-	}
-
-	if !plan.GeoipList.Equal(state.GeoipList) {
-		opts.GeoipList = plan.GeoipList.ValueString()
-		update = true
-	}
-
-	if !plan.GlobalWhitelistActive.Equal(state.GlobalWhitelistActive) {
-		opts.GlobalWhitelistActive = int(plan.GlobalWhitelistActive.ValueInt64())
-		update = true
-	}
-
-	if !plan.Http2https.Equal(state.Http2https) {
-		opts.Http2https = int(plan.Http2https.ValueInt64())
-		update = true
-	}
-
-	if !plan.Https2http.Equal(state.Https2http) {
-		opts.Https2http = int(plan.Https2http.ValueInt64())
-		update = true
-	}
-
-	if !plan.ProtectedIp.Equal(state.ProtectedIp) {
-		opts.ProtectedIp = plan.ProtectedIp.ValueString()
-		update = true
-	}
-
-	if !plan.Wwwredir.Equal(state.Wwwredir) {
-		opts.Wwwredir = int(plan.Wwwredir.ValueInt64())
-		update = true
-	}
-
-	if !plan.Cdn.Equal(state.Cdn) {
-		opts.Cdn = int(plan.Cdn.ValueInt64())
-		update = true
-	}
-
-	if !plan.CdnHost.Equal(state.CdnHost) {
-		opts.CdnHost = plan.CdnHost.ValueString()
-		update = true
-	}
-
-	if !plan.CdnProxyHost.Equal(state.CdnProxyHost) {
-		opts.CdnProxyHost = plan.CdnProxyHost.ValueString()
-		update = true
-	}
+	opts, update := CheckPlanVsState(plan, state, item)
 
 	if !update {
 		return
@@ -513,10 +452,115 @@ func (r *l7resourceResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
-	orig := plan.OriginData
-	plan = l7ItemToResourceModel(response.Data.Result)
+	planOrigins := plan.Origins
+	plan = flatternL7ResourceModel(response.Data.Result)
 
-	plan.OriginData = orig
+	for _, v := range planOrigins {
+		origin := expandL7OriginModel(v)
+		_, ok := CheckExistingOriginByIP(ctx, r.client, origin.IP, state.L7ResourceID.ValueInt64())
+		if !ok {
+			// Generate API request body from plan
+			createOriginOpts := &l7origin.CreateOpts{
+				L7ResourceID: state.L7ResourceID.ValueInt64(),
+				IP:           origin.IP,
+				Weight:       origin.Weight,
+				Mode:         origin.Mode,
+			}
+
+			result, _, err := l7origin.Create(ctx, r.client, createOriginOpts)
+			if err != nil {
+				msg := fmt.Sprintf("%+v", result)
+				resp.Diagnostics.AddError(
+					"Error creating l7origin: "+msg,
+					"Could not create l7origin, unexpected error: "+err.Error(),
+				)
+				return
+			}
+
+			result.Data.Result.L7ResourceID = state.L7ResourceID.ValueInt64()
+			state.Origins = append(state.Origins, flatternL7OriginModel(&result.Data.Result))
+		}
+	}
+
+	if len(state.Origins) != len(planOrigins) {
+		for i, v := range state.Origins {
+			_, ok := CheckPlanVsStateOrigin(planOrigins, v.IP.ValueString())
+			if !ok {
+				deleteOriginOpts := &l7origin.DeleteOpts{
+					ID:           v.ID.ValueInt64(),
+					L7ResourceID: state.L7ResourceID.ValueInt64(),
+				}
+
+				// Delete existing resource
+				result, _, err := l7origin.Delete(ctx, r.client, deleteOriginOpts)
+				if err != nil || result.Data.Result != "ok" {
+					resp.Diagnostics.AddError(
+						"Error Deleting l7origin",
+						"Could not delete l7origin, unexpected error: "+err.Error(),
+					)
+					return
+				}
+
+				state.Origins = removeL7originFromState(state.Origins, i)
+			}
+		}
+	}
+
+	for _, s := range state.Origins {
+		originOpts := expandL7OriginModel(s)
+		originOpts.L7ResourceID = state.L7ResourceID.ValueInt64()
+
+		updateOrig := false
+		for _, p := range planOrigins {
+			if p.IP == s.IP {
+				if !p.Mode.Equal(s.Mode) {
+					originOpts.Mode = p.Mode.ValueString()
+					updateOrig = true
+				}
+
+				if !p.Weight.Equal(s.Weight) {
+					originOpts.Weight = p.Weight.ValueInt64()
+					updateOrig = true
+				}
+
+				if !p.IP.Equal(s.IP) {
+					originOpts.IP = p.IP.ValueString()
+					updateOrig = true
+				}
+			}
+		}
+
+		if !updateOrig {
+			continue
+		}
+
+		_, _, err = l7origin.Update(ctx, r.client, originOpts)
+		if err != nil {
+			msg := fmt.Sprintf("%+v", originOpts)
+			resp.Diagnostics.AddError(
+				"Error Updating Servicepipe l7 origin: "+msg,
+				"Could not update l7 origin, unexpected error: "+err.Error(),
+			)
+			return
+		}
+	}
+
+	var origins []*l7originResourceModel
+	for _, v := range state.Origins {
+		originResponse, _, err := l7origin.GetByID(ctx, r.client, int(state.L7ResourceID.ValueInt64()), int(v.ID.ValueInt64()))
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Error Reading Servicepipe l7 origin",
+				"Could not read Servicepipe l7 origin ID "+strconv.Itoa(int(v.ID.ValueInt64()))+": "+err.Error(),
+			)
+			return
+		}
+
+		originResponse.Data.Result.L7ResourceID = state.L7ResourceID.ValueInt64()
+		origins = append(origins, flatternL7OriginModel(&originResponse.Data.Result))
+	}
+
+	plan.Origins = origins
 	plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
 
 	// Set refreshed state
@@ -539,7 +583,6 @@ func (r *l7resourceResource) Delete(ctx context.Context, req resource.DeleteRequ
 		L7ResourceID: int(state.L7ResourceID.ValueInt64()),
 	}
 
-	// Delete existing resource
 	result, _, err := l7resource.Delete(ctx, r.client, deleteOriginOpts)
 	if err != nil || result.Data.Result != "ok" {
 		resp.Diagnostics.AddError(
@@ -550,9 +593,8 @@ func (r *l7resourceResource) Delete(ctx context.Context, req resource.DeleteRequ
 	}
 }
 
-func ResourceModelTol7Item(model *l7resourceResourceModel) *l7resource.Item {
+func expandL7ResourceModel(model *l7resourceResourceModel) *l7resource.Item {
 	return &l7resource.Item{
-		// Assuming PartnerClientAccountId and other fields not in model are set elsewhere
 		L7ResourceID:          model.L7ResourceID.ValueInt64(),
 		L7ResourceName:        model.L7ResourceName.ValueString(),
 		L7ResourceIsActive:    int(model.L7ResourceIsActive.ValueInt64()),
@@ -573,11 +615,10 @@ func ResourceModelTol7Item(model *l7resourceResourceModel) *l7resource.Item {
 		Cdn:                   int(model.Cdn.ValueInt64()),
 		CdnHost:               model.CdnHost.ValueString(),
 		CdnProxyHost:          model.CdnProxyHost.ValueString(),
-		// OriginData:            model.OriginData.ValueString(),
 	}
 }
 
-func l7ItemToResourceModel(item l7resource.Item) *l7resourceResourceModel {
+func flatternL7ResourceModel(item l7resource.Item) *l7resourceResourceModel {
 	return &l7resourceResourceModel{
 		L7ResourceID:          types.Int64Value(int64(item.L7ResourceID)),
 		L7ResourceName:        types.StringValue(item.L7ResourceName),
@@ -599,6 +640,262 @@ func l7ItemToResourceModel(item l7resource.Item) *l7resourceResourceModel {
 		Cdn:                   types.Int64Value(int64(item.Cdn)),
 		CdnHost:               types.StringValue(item.CdnHost),
 		CdnProxyHost:          types.StringValue(item.CdnProxyHost),
-		OriginData:            types.StringValue(item.OriginData),
 	}
+}
+
+func expandL7OriginModel(item *l7originResourceModel) *l7origin.Item {
+	return &l7origin.Item{
+		L7ResourceID: item.L7ResourceID.ValueInt64(),
+		ID:           item.ID.ValueInt64(),
+		Weight:       item.Weight.ValueInt64(),
+		Mode:         item.Mode.ValueString(),
+		IP:           item.IP.ValueString(),
+		CreatedAt:    item.CreatedAt.ValueInt64(),
+		ModifiedAt:   item.ModifiedAt.ValueInt64(),
+	}
+}
+
+func flatternL7OriginModel(item *l7origin.Item) *l7originResourceModel {
+	return &l7originResourceModel{
+		L7ResourceID: types.Int64Value(item.L7ResourceID),
+		ID:           types.Int64Value(item.ID),
+		IP:           types.StringValue(item.IP),
+		Weight:       types.Int64Value(item.Weight),
+		Mode:         types.StringValue(item.Mode),
+		CreatedAt:    types.Int64Value(int64(item.CreatedAt)),
+		ModifiedAt:   types.Int64Value(int64(item.ModifiedAt)),
+	}
+}
+
+func CheckExistingOriginByIP(ctx context.Context, client *v1.Client, ip string, resourceID int64) (*l7origin.Item, bool) {
+	listOpts := &l7origin.ListOpts{
+		L7ResourceID: resourceID,
+	}
+
+	origins, _, err := l7origin.List(ctx, client, listOpts)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, item := range origins {
+		if item.IP == ip {
+			return item, true
+		}
+	}
+
+	return &l7origin.Item{}, false
+}
+
+func CheckPlanVsStateOrigin(origins []*l7originResourceModel, ip string) (*l7origin.Item, bool) {
+	for _, item := range origins {
+		if item.IP.ValueString() == ip {
+			return expandL7OriginModel(item), true
+		}
+	}
+
+	return &l7origin.Item{}, false
+}
+
+func removeL7originFromState(slice []*l7originResourceModel, s int) []*l7originResourceModel {
+	return append(slice[:s], slice[s+1:]...)
+}
+
+func CheckPlanVsState(plan *l7resourceResourceModel, state *l7resourceResourceModel, item *l7resource.Item) (*l7resource.Item, bool) {
+	update := false
+
+	if !plan.L7ResourceName.Equal(state.L7ResourceName) {
+		item.L7ResourceName = plan.L7ResourceName.ValueString()
+		update = true
+	}
+
+	if !plan.L7ResourceIsActive.Equal(state.L7ResourceIsActive) {
+		item.L7ResourceIsActive = int(plan.L7ResourceIsActive.ValueInt64())
+		update = true
+	}
+
+	if !plan.L7ProtectionDisable.Equal(state.L7ProtectionDisable) {
+		item.L7ProtectionDisable = int(plan.L7ProtectionDisable.ValueInt64())
+		update = true
+	}
+
+	if !plan.UseCustomSsl.Equal(state.UseCustomSsl) {
+		item.UseCustomSsl = int(plan.UseCustomSsl.ValueInt64())
+		update = true
+	}
+
+	if !plan.UseLetsencryptSsl.Equal(state.UseLetsencryptSsl) {
+		item.UseLetsencryptSsl = int(plan.UseLetsencryptSsl.ValueInt64())
+		update = true
+	}
+
+	if !plan.CustomSslKey.Equal(state.CustomSslKey) {
+		item.CustomSslKey = plan.CustomSslKey.ValueString()
+		update = true
+	}
+
+	if !plan.CustomSslCrt.Equal(state.CustomSslCrt) {
+		item.CustomSslCrt = plan.CustomSslCrt.ValueString()
+		update = true
+	}
+	if !plan.Forcessl.Equal(state.Forcessl) {
+		item.Forcessl = int(plan.Forcessl.ValueInt64())
+		update = true
+	}
+
+	if !plan.ServiceHttp2.Equal(state.ServiceHttp2) {
+		item.ServiceHttp2 = int(plan.ServiceHttp2.ValueInt64())
+		update = true
+	}
+
+	if !plan.GeoipMode.Equal(state.GeoipMode) {
+		item.GeoipMode = int(plan.GeoipMode.ValueInt64())
+		update = true
+	}
+
+	if !plan.GeoipList.Equal(state.GeoipList) {
+		item.GeoipList = plan.GeoipList.ValueString()
+		update = true
+	}
+
+	if !plan.GlobalWhitelistActive.Equal(state.GlobalWhitelistActive) {
+		item.GlobalWhitelistActive = int(plan.GlobalWhitelistActive.ValueInt64())
+		update = true
+	}
+
+	if !plan.Http2https.Equal(state.Http2https) {
+		item.Http2https = int(plan.Http2https.ValueInt64())
+		update = true
+	}
+
+	if !plan.Https2http.Equal(state.Https2http) {
+		item.Https2http = int(plan.Https2http.ValueInt64())
+		update = true
+	}
+
+	if !plan.ProtectedIp.Equal(state.ProtectedIp) {
+		item.ProtectedIp = plan.ProtectedIp.ValueString()
+		update = true
+	}
+
+	if !plan.Wwwredir.Equal(state.Wwwredir) {
+		item.Wwwredir = int(plan.Wwwredir.ValueInt64())
+		update = true
+	}
+
+	if !plan.Cdn.Equal(state.Cdn) {
+		item.Cdn = int(plan.Cdn.ValueInt64())
+		update = true
+	}
+
+	if !plan.CdnHost.Equal(state.CdnHost) {
+		item.CdnHost = plan.CdnHost.ValueString()
+		update = true
+	}
+
+	if !plan.CdnProxyHost.Equal(state.CdnProxyHost) {
+		item.CdnProxyHost = plan.CdnProxyHost.ValueString()
+		update = true
+	}
+
+	return item, update
+}
+
+func CheckingL7resourcePlanAttrIsNull(plan l7resourceResourceModel, item *l7resource.Item) (*l7resource.Item, bool) {
+	update := false
+
+	if !plan.L7ResourceName.IsNull() || !plan.L7ResourceName.IsUnknown() {
+		item.L7ResourceName = plan.L7ResourceName.ValueString()
+		update = true
+	}
+
+	if !plan.L7ResourceIsActive.IsNull() || !plan.L7ResourceIsActive.IsUnknown() {
+		item.L7ResourceIsActive = int(plan.L7ResourceIsActive.ValueInt64())
+		update = true
+	}
+
+	if !plan.L7ProtectionDisable.IsNull() || !plan.L7ProtectionDisable.IsUnknown() {
+		item.L7ProtectionDisable = int(plan.L7ProtectionDisable.ValueInt64())
+		update = true
+	}
+
+	if !plan.UseCustomSsl.IsNull() || !plan.UseCustomSsl.IsUnknown() {
+		item.UseCustomSsl = int(plan.UseCustomSsl.ValueInt64())
+		update = true
+	}
+
+	if !plan.UseLetsencryptSsl.IsNull() || !plan.UseLetsencryptSsl.IsUnknown() {
+		item.UseLetsencryptSsl = int(plan.UseLetsencryptSsl.ValueInt64())
+		update = true
+	}
+
+	if !plan.CustomSslKey.IsNull() || !plan.CustomSslKey.IsUnknown() {
+		item.CustomSslKey = plan.CustomSslKey.ValueString()
+		update = true
+	}
+
+	if !plan.CustomSslCrt.IsNull() || !plan.CustomSslCrt.IsUnknown() {
+		item.CustomSslCrt = plan.CustomSslCrt.ValueString()
+		update = true
+	}
+	if !plan.Forcessl.IsNull() || !plan.Forcessl.IsUnknown() {
+		item.Forcessl = int(plan.Forcessl.ValueInt64())
+		update = true
+	}
+
+	if !plan.ServiceHttp2.IsNull() || !plan.ServiceHttp2.IsUnknown() {
+		item.ServiceHttp2 = int(plan.ServiceHttp2.ValueInt64())
+		update = true
+	}
+
+	if !plan.GeoipMode.IsNull() || !plan.GeoipMode.IsUnknown() {
+		item.GeoipMode = int(plan.GeoipMode.ValueInt64())
+		update = true
+	}
+
+	if !plan.GeoipList.IsNull() || !plan.GeoipList.IsUnknown() {
+		item.GeoipList = plan.GeoipList.ValueString()
+		update = true
+	}
+
+	if !plan.GlobalWhitelistActive.IsNull() || !plan.GlobalWhitelistActive.IsUnknown() {
+		item.GlobalWhitelistActive = int(plan.GlobalWhitelistActive.ValueInt64())
+		update = true
+	}
+
+	if !plan.Http2https.IsNull() || !plan.Http2https.IsUnknown() {
+		item.Http2https = int(plan.Http2https.ValueInt64())
+		update = true
+	}
+
+	if !plan.Https2http.IsNull() || !plan.Https2http.IsUnknown() {
+		item.Https2http = int(plan.Https2http.ValueInt64())
+		update = true
+	}
+
+	if !plan.ProtectedIp.IsNull() || !plan.ProtectedIp.IsUnknown() {
+		item.ProtectedIp = plan.ProtectedIp.ValueString()
+		update = true
+	}
+
+	if !plan.Wwwredir.IsNull() || !plan.Wwwredir.IsUnknown() {
+		item.Wwwredir = int(plan.Wwwredir.ValueInt64())
+		update = true
+	}
+
+	if !plan.Cdn.IsNull() || !plan.Cdn.IsUnknown() {
+		item.Cdn = int(plan.Cdn.ValueInt64())
+		update = true
+	}
+
+	if !plan.CdnHost.IsNull() || !plan.CdnHost.IsUnknown() {
+		item.CdnHost = plan.CdnHost.ValueString()
+		update = true
+	}
+
+	if !plan.CdnProxyHost.IsNull() || !plan.CdnProxyHost.IsUnknown() {
+		item.CdnProxyHost = plan.CdnProxyHost.ValueString()
+		update = true
+	}
+
+	return item, update
 }

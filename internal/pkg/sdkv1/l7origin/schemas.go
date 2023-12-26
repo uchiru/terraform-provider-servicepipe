@@ -10,13 +10,13 @@ type Result struct {
 
 // Item represents an unmarshalled domain body from API response.
 type Item struct {
-	L7ResourceID int    `json:"l7ResourceId"`
-	ID           int    `json:"id"`
-	Weight       int    `json:"weight"`
+	L7ResourceID int64  `json:"l7ResourceId"`
+	ID           int64  `json:"id"`
+	Weight       int64  `json:"weight"`
 	Mode         string `json:"mode"`
 	IP           string `json:"ip"`
-	CreatedAt    int    `json:"createdAt"`
-	ModifiedAt   int    `json:"modifiedAt"`
+	CreatedAt    int64  `json:"createdAt"`
+	ModifiedAt   int64  `json:"modifiedAt"`
 }
 
 type DataItems struct {
@@ -33,9 +33,9 @@ type Items struct {
 }
 
 type Info struct {
-	TotalCount int `json:"totalCount"`
-	Limit      int `json:"limit"`
-	Page       int `json:"page"`
+	TotalCount int64 `json:"totalCount"`
+	Limit      int64 `json:"limit"`
+	Page       int64 `json:"page"`
 }
 
 type DataDelete struct {
