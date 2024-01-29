@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"strings"
@@ -155,7 +154,8 @@ func (client *Client) DoRequest(ctx context.Context, method, path string, body i
 	}
 
 	responseResult := &ResponseResult{
-		Response: response,
+		Response:    response,
+		RequestBody: body,
 	}
 
 	// Check status code and populate custom error body with extended error message if it's possible.
@@ -169,6 +169,21 @@ func (client *Client) DoRequest(ctx context.Context, method, path string, body i
 	return responseResult, nil
 }
 
+func (client *Client) Echo(ctx context.Context) (bool, *ResponseResult, error) {
+
+	l7ResourcePath := "l7/resource"
+	url := strings.Join([]string{client.Endpoint, l7ResourcePath}, "/")
+	responseResult, err := client.DoRequest(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return false, nil, err
+	}
+	if responseResult.Err != nil {
+		return false, responseResult, responseResult.Err
+	}
+
+	return true, responseResult, responseResult.Err
+}
+
 // ResponseResult represents a result of an HTTP request.
 // It embeds standard http.Response and adds custom API error representations.
 type ResponseResult struct {
@@ -180,6 +195,8 @@ type ResponseResult struct {
 
 	// Err contains an error that can be provided to a caller.
 	Err error
+
+	RequestBody io.Reader
 }
 
 // ErrNotFound represents 404 status code error of an HTTP response.
@@ -194,7 +211,7 @@ type ErrGeneric struct {
 
 // ExtractResult allows to provide an object into which ResponseResult body will be extracted.
 func (result *ResponseResult) ExtractResult(to interface{}) error {
-	body, err := ioutil.ReadAll(result.Body)
+	body, err := io.ReadAll(result.Body)
 	if err != nil {
 		return err
 	}
@@ -205,7 +222,7 @@ func (result *ResponseResult) ExtractResult(to interface{}) error {
 
 // ExtractRaw extracts ResponseResult body into the slice of bytes without unmarshalling.
 func (result *ResponseResult) ExtractRaw() ([]byte, error) {
-	bytes, err := ioutil.ReadAll(result.Body)
+	bytes, err := io.ReadAll(result.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +233,7 @@ func (result *ResponseResult) ExtractRaw() ([]byte, error) {
 
 // extractErr populates an error message and error structure in the ResponseResult body.
 func (result *ResponseResult) extractErr() error {
-	body, err := ioutil.ReadAll(result.Body)
+	body, err := io.ReadAll(result.Body)
 	if err != nil {
 		return err
 	}
@@ -236,11 +253,10 @@ func (result *ResponseResult) extractErr() error {
 	if err != nil {
 		result.Err = fmt.Errorf("sp-go: got invalid response from the server, status code %d",
 			result.StatusCode)
-		return nil
+		return err
 	}
 
-	result.Err = fmt.Errorf("sp-go: got the %d status code from the server: %s",
-		result.StatusCode, string(body))
+	result.Err = fmt.Errorf("sp-go: got the %d status code from the server: %s", result.StatusCode, string(body))
 
 	return nil
 }

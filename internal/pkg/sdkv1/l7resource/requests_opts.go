@@ -7,6 +7,7 @@ type CreateOpts struct {
 
 	// OriginData represents valid IP v4 address.
 	OriginData string `json:"originData,omitempty"`
+	Wwwredir   int    `json:"wwwredir,omitempty"`
 }
 
 // CreateOpts represents requests options to create a domain.
