@@ -274,8 +274,11 @@ func (r *l7resourceResource) Create(ctx context.Context, req resource.CreateRequ
 			)
 			return
 		}
+
+		results := hackSPSSLState(plan, respUpd)
+
 		// Convert from the API data model to the Terraform data model
-		plan = flatternL7ResourceModel(respUpd.Data.Result)
+		plan = flatternL7ResourceModel(results.Data.Result)
 	}
 
 	var origins []*l7originResourceModel
@@ -452,8 +455,10 @@ func (r *l7resourceResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
+	results := hackSPSSLState(plan, response)
+
 	planOrigins := plan.Origins
-	plan = flatternL7ResourceModel(response.Data.Result)
+	plan = flatternL7ResourceModel(results.Data.Result)
 
 	for _, v := range planOrigins {
 		origin := expandL7OriginModel(v)
@@ -700,6 +705,19 @@ func removeL7originFromState(slice []*l7originResourceModel, s int) []*l7originR
 	return append(slice[:s], slice[s+1:]...)
 }
 
+func hackSPSSLState(plan *l7resourceResourceModel, l7res *l7resource.Data) *l7resource.Data {
+	// Hack - servicepipe api doesn't support ssl cert params in response
+	if !plan.CustomSslKey.IsNull() || !plan.CustomSslKey.IsUnknown() {
+		l7res.Data.Result.CustomSslKey = plan.CustomSslKey.ValueString()
+	}
+
+	if !plan.CustomSslCrt.IsNull() || !plan.CustomSslCrt.IsUnknown() {
+		l7res.Data.Result.CustomSslCrt = plan.CustomSslCrt.ValueString()
+	}
+
+	return l7res
+}
+
 func CheckPlanVsState(plan *l7resourceResourceModel, state *l7resourceResourceModel, item *l7resource.Item) (*l7resource.Item, bool) {
 	update := false
 
@@ -837,6 +855,7 @@ func CheckingL7resourcePlanAttrIsNull(plan l7resourceResourceModel, item *l7reso
 		item.CustomSslCrt = plan.CustomSslCrt.ValueString()
 		update = true
 	}
+
 	if !plan.Forcessl.IsNull() || !plan.Forcessl.IsUnknown() {
 		item.Forcessl = int(plan.Forcessl.ValueInt64())
 		update = true

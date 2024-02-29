@@ -36,3 +36,4 @@ website/vendor
 tags
 env.sh
 tags.lock
+tags.temp
