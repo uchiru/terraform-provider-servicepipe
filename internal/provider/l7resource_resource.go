@@ -396,7 +396,8 @@ func (r *l7resourceResource) Read(ctx context.Context, req resource.ReadRequest,
 		origins = append(origins, flatternL7OriginModel(&originResponse.Data.Result))
 	}
 
-	state = flatternL7ResourceModel(resourceResponse.Data.Result)
+	results := hackSPSSLState(state, resourceResponse)
+	state = flatternL7ResourceModel(results.Data.Result)
 	state.Origins = origins
 
 	// Set refreshed state
