@@ -12,14 +12,14 @@ provider "servicepipe" {
 }
 
 resource "servicepipe_l7resource" "test" {
-  l7_resource_name = "test.runit.cc"
+  l7_resource_name = "test.example.com"
   www_redir        = 1
   http_2_https     = 1
   force_ssl        = 0
 
   use_custom_ssl = 1
-  custom_ssl_key = base64encode(var.test_runit_cc_key)
-  custom_ssl_crt = base64encode(var.test_runit_cc_crt)
+  custom_ssl_key = base64encode(var.test_example_com_key)
+  custom_ssl_crt = base64encode(var.test_example_com_crt)
 
   origins = [
     {

@@ -1,21 +1,21 @@
 variable "SERVICEPIPE_TOKEN" {}
 
-variable "test_runit_cc_key" {
+variable "test_example_com_key" {
   type    = string
   default = ""
 
   validation {
-    condition     = var.test_runit_cc_key != ""
-    error_message = "The test_runit_cc_key value must be not empty, ex: test_runit_cc_key"
+    condition     = var.test_example_com_key != ""
+    error_message = "The test_example_com_key value must be not empty, ex: test_example_com_key"
   }
 }
 
-variable "test_runit_cc_crt" {
+variable "test_example_com_crt" {
   type    = string
   default = ""
 
   validation {
-    condition     = var.test_runit_cc_crt != ""
-    error_message = "The test_runit_cc_crt value must be not empty, ex: test_runit_cc_crt"
+    condition     = var.test_example_com_crt != ""
+    error_message = "The test_example_com_crt value must be not empty, ex: test_example_com_crt"
   }
 }
